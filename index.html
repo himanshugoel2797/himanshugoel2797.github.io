@@ -8,9 +8,11 @@
             box-sizing: border-box;
         }
 
+        html,
         body {
             font-family: 'Roboto', sans-serif;
             font-size: 16px;
+            height: 100%;
         }
 
         ul {
@@ -30,19 +32,50 @@
             display: flex;
         }
 
+        .vec_entry_row {
+            display: flex;
+            padding: 10px;
+            height: 5vh;
+            background-color: #5e5e5e;
+        }
+
+        .vec_entry {
+            flex: 70%;
+            background-color: #5e5e5e;
+            color: #cccccc;
+        }
+
+        .add_vec_btn {
+            flex: 30%;
+        }
+
+        .control_panel_row {
+            display: flex;
+            padding: 5px;
+        }
+
+        .std_btn {
+            flex: 30%;
+        }
+
+        .slider_panel {
+            flex: 70%;
+        }
+
+
         /* Create two equal columns that sits next to each other */
         .vis_tools {
             flex: 70%;
             padding: 10px;
-            height: 500px;
-            background-color: aqua;
+            height: 90vh;
+            background-color: #888888;
         }
 
         .vec_queue {
             flex: 30%;
             padding: 10px;
-            height: 500px;
-            background-color: #888888;
+            height: 90vh;
+            background-color: #5e5e5e;
             overflow: auto;
             color: #cccccc;
         }
@@ -56,11 +89,12 @@
         }
 
         .vec_queue ul li.selected {
-            background-color: #ff0000;
+            background-color: #b50000;
         }
 
         .canv {
             margin: 0;
+            padding-bottom: 20%;
             position: relative;
             top: 10%;
             left: 50%;
@@ -79,12 +113,25 @@
             <div class="visualizer_main">
                 <canvas class="canv" id="canv" width="128" height="128"></canvas>
             </div>
-            <div class="control_panel"></div>
+            <div class="control_panel">
+                <div class="control_panel_row">
+                    <input type="text" class="vec_entry" id="vec_op_entry" />
+                </div>
+                <div class="control_panel_row">
+                    <input type="range" class="slider_panel" id="scatter_mag" , name="scatter_mag" , min="0"
+                        max="100" />
+                    <button class="std_btn" id="scatter_btn" onclick="{scatter_clicked();}">Scatter</button>
+                </div>
+                <div class="control_panel_row">
+                    <button class="std_btn" id="eval_btn" onclick="{scatter_clicked();}">Evaluate</button>
+                    <button class="std_btn" id="queue_btn" onclick="{scatter_clicked();}">Push</button>
+                </div>
+            </div>
         </div>
     </div>
     <div class="vec_entry_row">
-        <textarea id="vec_entry" rows="2" cols="50"></textarea>
-        <button id="add_vec" onclick="{add_vec_clicked();}">Add Vector</button>
+        <input type="text" class="vec_entry" id="vec_entry" />
+        <button class="add_vec_btn" id="add_vec" onclick="{add_vec_clicked();}">Add Vector</button>
     </div>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
@@ -92,64 +139,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.6.0/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@2.6.0/dist/tf-converter.min.js"></script>
     <script>
-        //Source: https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript
-        function xmur3(str) {
-            for (var i = 0, h = 1779033703 ^ str.length; i < str.length; i++)
-                h = Math.imul(h ^ str.charCodeAt(i), 3432918353),
-                    h = h << 13 | h >>> 19;
-            return function () {
-                h = Math.imul(h ^ h >>> 16, 2246822507);
-                h = Math.imul(h ^ h >>> 13, 3266489909);
-                return (h ^= h >>> 16) >>> 0;
-            }
-        }
-
-        //Source: https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript
-        function mulberry32(a) {
-            return function () {
-                var t = a += 0x6D2B79F5;
-                t = Math.imul(t ^ t >>> 15, t | 1);
-                t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-                return ((t ^ t >>> 14) >>> 0) / 4294967296;
-            }
-        }
-
-        function sfc32(a, b, c, d) {
-            return function () {
-                a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
-                var t = (a + b) | 0;
-                a = b ^ b >>> 9;
-                b = c + (c << 3) | 0;
-                c = (c << 21 | c >>> 11);
-                d = d + 1 | 0;
-                t = t + d | 0;
-                c = c + t | 0;
-                return (t >>> 0) / 4294967296;
-            }
-        }
-
-        //Source: https://stackoverflow.com/questions/25582882/javascript-math-random-normal-distribution-gaussian-bell-curve
-        function randn_bm(rng) {
-            let u = 0, v = 0;
-            while (u === 0) u = rng(); //Converting [0,1) to (0,1)
-            while (v === 0) v = rng();
-            let num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-            num = num / 10.0 + 0.5; // Translate to 0 -> 1
-            if (num > 1 || num < 0) return randn_bm(); // resample between 0 and 1
-            return num;
-        }
-
-        function randn_tensor(str) {
-            var seed = xmur3(str);
-            var rng = sfc32(seed(), seed(), seed(), seed());
-            var nums = [];
-            for (i = 0; i < 128; i++) {
-                nums.push(randn_bm(rng));
-            }
-            return tf.tensor([nums]);
-        }
-
         var model;
+        var selectedItem;
         async function load_model() {
             const MODEL_URL = 'g_l_mdl_web/model.json';
             model = await tf.loadLayersModel(MODEL_URL)
@@ -182,6 +173,14 @@
             await sample_model(model, key, true);
         }
 
+        function eval_dsl(str) {
+            str.split()
+        }
+
+        async function scatter_clicked() {
+
+        }
+
         $('#vec_main_list').jqListbox({
             multiselect: false,
             itemRenderer: function (item, pos, listbox) {
@@ -189,7 +188,8 @@
             },
             onBeforeRender: function (listbox) {
                 if (listbox.countSelected() == 1) {
-                    sample_model(model, listbox.getSelectedItems()[0].key, false);
+                    selectedItem = listbox.getSelectedItems()[0];
+                    sample_model(model, selectedItem.key, false);
                 }
             }
         });
