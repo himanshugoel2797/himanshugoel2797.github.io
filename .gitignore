@@ -1,0 +1,8 @@
+mix_sample/**
+interp/**
+g_l_mdl/**
+g_l_keras/**
+checkpoint/**
+*.npy
+*.gif
+*.mp4
