@@ -3,6 +3,7 @@ interp/**
 g_l_mdl/**
 g_l_keras/**
 checkpoint/**
+checkpoint_face/**
 *.npy
 *.gif
 *.mp4
